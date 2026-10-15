@@ -29,6 +29,7 @@ API_RETRIES = 2
 # Imports that are dangerous or unnecessary for code grading
 DANGEROUS_IMPORTS = {
     "os", "subprocess", "socket", "shutil", "pathlib", "importlib",
+    "importlib.util", "importlib.machinery",
     "ctypes", "signal", "threading", "multiprocessing", "asyncio",
     "urllib", "http", "ftplib", "smtplib", "telnetlib", "xmlrpc",
     "pickle", "marshal", "shelve", "dbm", "sqlite3", "requests",
@@ -37,6 +38,19 @@ DANGEROUS_IMPORTS = {
     "sysconfig", "distutils", "ensurepip", "venv", "zipfile",
     "tarfile", "gzip", "bz2", "lzma", "zlib", "crypt", "pwd",
     "grp", "spwd", "termios", "posix", "nt", "sys",
+    # Attribute/introspection and low-level escape vectors
+    "getattr", "setattr", "delattr", "hasattr", "builtins", "io",
+    "struct", "codecs", "operator", "functools", "itertools",
+    "collections", "array", "select",
+}
+
+# Builtins that must never be called by graded code: they either execute
+# arbitrary code (eval/exec/compile/__import__) or expose the interpreter
+# internals needed to climb out of the sandbox (getattr/globals/...).
+DANGEROUS_CALLS = {
+    "eval", "exec", "compile", "__import__", "open", "breakpoint",
+    "locals", "vars", "globals", "getattr", "setattr", "delattr",
+    "hasattr", "exit", "quit", "input",
 }
 
 
@@ -79,7 +93,7 @@ def _is_code_safe(code: str) -> bool:
             if node.attr.startswith("__") and node.attr.endswith("__"):
                 return False
         elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "__import__", "open", "breakpoint", "locals", "vars", "setattr", "delattr", "hasattr"):
+            if isinstance(node.func, ast.Name) and node.func.id in DANGEROUS_CALLS:
                 return False
     return True
 
@@ -179,18 +193,13 @@ def grade_fibonacci(response: str) -> tuple[bool, float, str]:
     if code:
         ok, stdout, stderr = run_sandboxed(code)
         if ok:
-            # Re-extract namespace by running with a probe
+            # Probe the function by name. Note: globals()/eval/vars are blocked
+            # by the sandbox (and this probe is AST-checked too), so reference
+            # the candidate names directly rather than introspecting the module.
             probe = code + """
 
-_fib_func = None
-for _name in dir():
-    if 'fib' in _name.lower():
-        _candidate = globals().get(_name)
-        if callable(_candidate):
-            _fib_func = _candidate
-            break
-_probe_result = _fib_func(10) if _fib_func else None
-print(_probe_result)
+_fib = fib if 'fib' in dir() else fibonacci if 'fibonacci' in dir() else None
+print(_fib(10) if _fib else None)
 """
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
@@ -246,8 +255,6 @@ def grade_binary_search(response: str) -> tuple[bool, float, str]:
                     passed = int(stdout2.strip())
                     score = passed / 4.0
                     return score >= 0.75, score, f"Code execution: {passed}/4 test cases passed"
-                except ValueError:
-                    pass
                 except Exception:
                     pass
 
@@ -270,15 +277,13 @@ def grade_json_parse(response: str) -> tuple[bool, float, str]:
     if code:
         ok, stdout, stderr = run_sandboxed(code)
         if ok:
-            probe = code + "\n\n_tests = [('{\"key\": \"value\"}', {'key': 'value'}), ('[1,2,3]', [1,2,3]), ('invalid', None)]\n_passed = 0\nfor _inp, _exp in _tests:\n    try:\n        _f = parse_json if 'parse_json' in dir() else parse if 'parse' in dir() else loads_json if 'loads_json' in dir() else None\n        if _f:\n            try:\n                _r = _f(_inp)\n                if _r == _exp: _passed += 1\n            except:\n                if _exp is None: _passed += 1\n    except Exception: pass\nprint(_passed)"
+            probe = code + "\n\n_tests = [('{\"key\": \"value\"}', {'key': 'value'}), ('[1,2,3]', [1,2,3]), ('invalid', None)]\n_passed = 0\nfor _inp, _exp in _tests:\n    try:\n        _f = parse_json if 'parse_json' in dir() else parse if 'parse' in dir() else loads_json if 'loads_json' in dir() else None\n        if _f:\n            try:\n                _r = _f(_inp)\n                if _r == _exp: _passed += 1\n            except Exception:\n                if _exp is None: _passed += 1\n    except Exception: pass\nprint(_passed)"
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
                 try:
                     passed = int(stdout2.strip())
                     score = passed / 3.0
                     return score >= 0.75, score, f"Code execution: {passed}/3 test cases passed"
-                except ValueError:
-                    pass
                 except Exception:
                     pass
 
@@ -334,8 +339,6 @@ def grade_palindrome(response: str) -> tuple[bool, float, str]:
                     passed = int(stdout2.strip())
                     score = passed / 5.0
                     return score >= 0.8, score, f"Code execution: {passed}/5 test cases passed"
-                except ValueError:
-                    pass
                 except Exception:
                     pass
 

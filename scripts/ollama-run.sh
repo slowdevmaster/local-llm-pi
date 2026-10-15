@@ -2,7 +2,8 @@
 # Start Ollama on boot (cron @reboot) if it isn't already running.
 # Improvements: flock PID guard, error handling, log rotation, portable paths.
 
-set -euo pipefail
+set -eu
+set -o pipefail
 
 OLLAMA_BIN="${OLLAMA_BIN:-/home/jimmy/ollama_root/bin/ollama}"
 OLLAMA_LOG="${OLLAMA_LOG:-/home/jimmy/ollama.log}"
@@ -46,5 +47,8 @@ if [ ! -x "$OLLAMA_BIN" ]; then
 fi
 
 nohup "$OLLAMA_BIN" serve >> "$OLLAMA_LOG" 2>&1 &
-echo $! > "$OLLAMA_PIDFILE"
-echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Started Ollama (PID $!)" >> "$OLLAMA_LOG"
+OLLAMA_PID=$!
+# Detach so the shell can exit without the child being signalled on teardown.
+disown 2>/dev/null || true
+echo "$OLLAMA_PID" > "$OLLAMA_PIDFILE"
+echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Started Ollama (PID $OLLAMA_PID)" >> "$OLLAMA_LOG"

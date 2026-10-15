@@ -239,6 +239,8 @@ def run_benchmark(
         num_ctx = 131072
     if max_tokens < 1:
         max_tokens = 1
+    if max_tokens > 8192:
+        max_tokens = 8192
 
     print(f"  Running: {model} | temp={temperature} ctx={num_ctx}")
 
@@ -296,7 +298,7 @@ def run_benchmark(
         print(f"    ERROR: {e}")
         total_time = time.perf_counter() - start_time
 
-    if not timed_out and total_time == 0.0:
+    if not timed_out and total_time < 0.001:
         total_time = time.perf_counter() - start_time
 
     mem_after = get_ollama_memory_mb()
