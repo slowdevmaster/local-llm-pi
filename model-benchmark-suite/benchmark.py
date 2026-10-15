@@ -157,7 +157,7 @@ def get_ollama_memory_mb() -> float:
             except (FileNotFoundError, ProcessLookupError, ValueError, IndexError):
                 continue
         return total
-    except (Exception, ValueError):
+    except Exception:
         return 0.0
 
 
@@ -231,8 +231,12 @@ def run_benchmark(
     # Input validation
     if temperature < 0:
         temperature = 0.0
+    if temperature > 2.0:
+        temperature = 2.0
     if num_ctx < 1:
         num_ctx = 1
+    if num_ctx > 131072:
+        num_ctx = 131072
     if max_tokens < 1:
         max_tokens = 1
 

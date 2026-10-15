@@ -79,7 +79,7 @@ def _is_code_safe(code: str) -> bool:
             if node.attr.startswith("__") and node.attr.endswith("__"):
                 return False
         elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "__import__", "open", "breakpoint", "globals", "locals", "vars", "getattr"):
+            if isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "__import__", "open", "breakpoint", "locals", "vars", "setattr", "delattr", "hasattr"):
                 return False
     return True
 
@@ -173,22 +173,6 @@ def extract_python_code(response: str) -> str | None:
 # Grading functions
 # ---------------------------------------------------------------------------
 
-def _check_function(func, test_cases, args_format="single"):
-    """Generic helper: call func with test cases, return pass count."""
-    passed = 0
-    for case in test_cases:
-        try:
-            if args_format == "single":
-                result = func(case[0])
-            else:
-                result = func(case[0], case[1])
-            if result == case[-1]:
-                passed += 1
-        except Exception:
-            pass
-    return passed
-
-
 def grade_fibonacci(response: str) -> tuple[bool, float, str]:
     """Check if response contains a correct Fibonacci implementation."""
     code = extract_python_code(response)
@@ -255,7 +239,7 @@ def grade_binary_search(response: str) -> tuple[bool, float, str]:
     if code:
         ok, stdout, stderr = run_sandboxed(code)
         if ok:
-            probe = code + "\n\n_tests = [([1,2,3,4,5], 3, 2), ([1,2,3,4,5], 6, -1), ([], 1, -1), ([1], 1, 0)]\n_passed = 0\nfor _arr, _t, _e in _tests:\n    try:\n        _f = binary_search if 'binary_search' in dir() else search if 'search' in dir() else binarySearch if 'binarySearch' in dir() else None\n        if _f and _f(_arr, _t) == _e: _passed += 1\n    except: pass\nprint(_passed)"
+            probe = code + "\n\n_tests = [([1,2,3,4,5], 3, 2), ([1,2,3,4,5], 6, -1), ([], 1, -1), ([1], 1, 0)]\n_passed = 0\nfor _arr, _t, _e in _tests:\n    try:\n        _f = binary_search if 'binary_search' in dir() else search if 'search' in dir() else binarySearch if 'binarySearch' in dir() else None\n        if _f and _f(_arr, _t) == _e: _passed += 1\n    except Exception: pass\nprint(_passed)"
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
                 try:
@@ -264,7 +248,7 @@ def grade_binary_search(response: str) -> tuple[bool, float, str]:
                     return score >= 0.75, score, f"Code execution: {passed}/4 test cases passed"
                 except ValueError:
                     pass
-                except:
+                except Exception:
                     pass
 
     response_lower = response.lower()
@@ -286,7 +270,7 @@ def grade_json_parse(response: str) -> tuple[bool, float, str]:
     if code:
         ok, stdout, stderr = run_sandboxed(code)
         if ok:
-            probe = code + "\n\n_tests = [('{\"key\": \"value\"}', {'key': 'value'}), ('[1,2,3]', [1,2,3]), ('invalid', None)]\n_passed = 0\nfor _inp, _exp in _tests:\n    try:\n        _f = parse_json if 'parse_json' in dir() else parse if 'parse' in dir() else loads_json if 'loads_json' in dir() else None\n        if _f:\n            try:\n                _r = _f(_inp)\n                if _r == _exp: _passed += 1\n            except:\n                if _exp is None: _passed += 1\n    except: pass\nprint(_passed)"
+            probe = code + "\n\n_tests = [('{\"key\": \"value\"}', {'key': 'value'}), ('[1,2,3]', [1,2,3]), ('invalid', None)]\n_passed = 0\nfor _inp, _exp in _tests:\n    try:\n        _f = parse_json if 'parse_json' in dir() else parse if 'parse' in dir() else loads_json if 'loads_json' in dir() else None\n        if _f:\n            try:\n                _r = _f(_inp)\n                if _r == _exp: _passed += 1\n            except:\n                if _exp is None: _passed += 1\n    except Exception: pass\nprint(_passed)"
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
                 try:
@@ -295,7 +279,7 @@ def grade_json_parse(response: str) -> tuple[bool, float, str]:
                     return score >= 0.75, score, f"Code execution: {passed}/3 test cases passed"
                 except ValueError:
                     pass
-                except:
+                except Exception:
                     pass
 
     response_lower = response.lower()
@@ -343,7 +327,7 @@ def grade_palindrome(response: str) -> tuple[bool, float, str]:
     if code:
         ok, stdout, stderr = run_sandboxed(code)
         if ok:
-            probe = code + "\n\n_tests = [('racecar', True), ('hello', False), ('a', True), ('', True), ('madam', True)]\n_passed = 0\nfor _inp, _exp in _tests:\n    try:\n        _f = is_palindrome if 'is_palindrome' in dir() else palindrome if 'palindrome' in dir() else check_palindrome if 'check_palindrome' in dir() else None\n        if _f and _f(_inp) == _exp: _passed += 1\n    except: pass\nprint(_passed)"
+            probe = code + "\n\n_tests = [('racecar', True), ('hello', False), ('a', True), ('', True), ('madam', True)]\n_passed = 0\nfor _inp, _exp in _tests:\n    try:\n        _f = is_palindrome if 'is_palindrome' in dir() else palindrome if 'palindrome' in dir() else check_palindrome if 'check_palindrome' in dir() else None\n        if _f and _f(_inp) == _exp: _passed += 1\n    except Exception: pass\nprint(_passed)"
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
                 try:
@@ -352,7 +336,7 @@ def grade_palindrome(response: str) -> tuple[bool, float, str]:
                     return score >= 0.8, score, f"Code execution: {passed}/5 test cases passed"
                 except ValueError:
                     pass
-                except:
+                except Exception:
                     pass
 
     response_lower = response.lower()
@@ -430,7 +414,7 @@ TESTS = [
     {
         "name": "fizzbuzz",
         "category": "classic",
-        "prompt": "Write a Python function `fizzbuzz(n)` that returns a list of strings for numbers 1 to n where multiples of 3 are \'Fizz\', multiples of 5 are \'Buzz\', multiples of both are \'FizzBuzz\', and other numbers are strings.",
+        "prompt": "Write a Python function `fizzbuzz(n)` that returns a list of strings for numbers 1 to n where multiples of 3 are 'Fizz', multiples of 5 are 'Buzz', multiples of both are 'FizzBuzz', and other numbers are strings.",
         "grader": grade_fizzbuzz,
     },
     {

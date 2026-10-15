@@ -2,7 +2,7 @@
 # Start Ollama on boot (cron @reboot) if it isn't already running.
 # Improvements: flock PID guard, error handling, log rotation, portable paths.
 
-set -eu
+set -euo pipefail
 
 OLLAMA_BIN="${OLLAMA_BIN:-/home/jimmy/ollama_root/bin/ollama}"
 OLLAMA_LOG="${OLLAMA_LOG:-/home/jimmy/ollama.log}"
@@ -11,7 +11,7 @@ OLLAMA_LINES=2000
 
 # --- log rotation (keep last N lines) ---
 if [ -f "$OLLAMA_LOG" ] && [ "$(wc -l < "$OLLAMA_LOG")" -gt "$OLLAMA_LINES" ]; then
-    tail -n 1000 "$OLLAMA_LOG" > "${OLLAMA_LOG}.tmp" && mv "${OLLAMA_LOG}.tmp" "$OLLAMA_LOG"
+    tail -n "$OLLAMA_LINES" "$OLLAMA_LOG" > "${OLLAMA_LOG}.tmp" && mv "${OLLAMA_LOG}.tmp" "$OLLAMA_LOG"
 fi
 
 # --- PID file guard (prevent double-start race) ---
