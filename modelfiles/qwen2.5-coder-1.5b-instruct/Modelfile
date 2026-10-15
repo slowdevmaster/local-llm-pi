@@ -1,0 +1,8 @@
+FROM /home/jimmy/gguf/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf
+
+TEMPLATE """{{ .Prompt }}"""
+
+PARAMETER temperature 0.7
+PARAMETER num_ctx 4096
+
+LICENSE """Apache 2.0"""

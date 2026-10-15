@@ -1,0 +1,9 @@
+FROM /home/jimmy/gguf/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf
+
+TEMPLATE """{{ .System }}
+{{ .Prompt }}"""
+
+PARAMETER temperature 0.7
+PARAMETER num_ctx 4096
+
+LICENSE """Llama 3.1 Community License"""
