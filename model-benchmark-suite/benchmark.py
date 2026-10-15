@@ -154,10 +154,10 @@ def get_ollama_memory_mb() -> float:
                         if line.startswith("VmRSS:"):
                             total += int(line.split()[1]) / 1024  # kB -> MB
                             break
-            except (FileNotFoundError, ProcessLookupError, ValueError):
+            except (FileNotFoundError, ProcessLookupError, ValueError, IndexError):
                 continue
         return total
-    except Exception:
+    except (Exception, ValueError):
         return 0.0
 
 
@@ -179,7 +179,7 @@ def download_model(name: str) -> bool:
                     if "completed" in progress and "total" in progress:
                         pct = progress["completed"] / progress["total"] * 100
                         print(f"  {pct:.1f}%", end="\r")
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, ZeroDivisionError):
                     pass
         print(f"\nDownloaded: {name}")
         return True

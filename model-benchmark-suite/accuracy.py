@@ -79,7 +79,7 @@ def _is_code_safe(code: str) -> bool:
             if node.attr.startswith("__") and node.attr.endswith("__"):
                 return False
         elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "__import__"):
+            if isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "__import__", "open", "breakpoint", "globals", "locals", "vars", "getattr"):
                 return False
     return True
 
@@ -200,10 +200,13 @@ def grade_fibonacci(response: str) -> tuple[bool, float, str]:
 
 _fib_func = None
 for _name in dir():
-    if 'fib' in _name.lower() and callable(eval(_name)):
-        _fib_func = eval(_name)
-        break
+    if 'fib' in _name.lower():
+        _candidate = globals().get(_name)
+        if callable(_candidate):
+            _fib_func = _candidate
+            break
 _probe_result = _fib_func(10) if _fib_func else None
+print(_probe_result)
 """
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
@@ -261,6 +264,8 @@ def grade_binary_search(response: str) -> tuple[bool, float, str]:
                     return score >= 0.75, score, f"Code execution: {passed}/4 test cases passed"
                 except ValueError:
                     pass
+                except:
+                    pass
 
     response_lower = response.lower()
     has_def = "def" in response_lower and ("binary" in response_lower or "search" in response_lower)
@@ -289,6 +294,8 @@ def grade_json_parse(response: str) -> tuple[bool, float, str]:
                     score = passed / 3.0
                     return score >= 0.75, score, f"Code execution: {passed}/3 test cases passed"
                 except ValueError:
+                    pass
+                except:
                     pass
 
     response_lower = response.lower()
@@ -344,6 +351,8 @@ def grade_palindrome(response: str) -> tuple[bool, float, str]:
                     score = passed / 5.0
                     return score >= 0.8, score, f"Code execution: {passed}/5 test cases passed"
                 except ValueError:
+                    pass
+                except:
                     pass
 
     response_lower = response.lower()
