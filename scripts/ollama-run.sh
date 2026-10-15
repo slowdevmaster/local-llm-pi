@@ -15,6 +15,13 @@ if [ -f "$OLLAMA_LOG" ] && [ "$(wc -l < "$OLLAMA_LOG")" -gt "$OLLAMA_LINES" ]; t
 fi
 
 # --- PID file guard (prevent double-start race) ---
+# Atomic lock guard (replaces TOCTOU-prone PID file check)
+exec 200>"${OLLAMA_PIDFILE}.lock"
+if ! flock -n 200; then
+    echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') Another instance is starting Ollama, exiting" >> "$OLLAMA_LOG"
+    exit 0
+fi
+
 if [ -f "$OLLAMA_PIDFILE" ]; then
     OLD_PID=$(cat "$OLLAMA_PIDFILE" 2>/dev/null || true)
     if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then

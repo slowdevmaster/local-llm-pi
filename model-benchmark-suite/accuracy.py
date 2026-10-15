@@ -36,7 +36,7 @@ DANGEROUS_IMPORTS = {
     "gc", "inspect", "code", "codeop", "compileall", "py_compile",
     "sysconfig", "distutils", "ensurepip", "venv", "zipfile",
     "tarfile", "gzip", "bz2", "lzma", "zlib", "crypt", "pwd",
-    "grp", "spwd", "termios", "posix", "nt",
+    "grp", "spwd", "termios", "posix", "nt", "sys",
 }
 
 
@@ -59,7 +59,7 @@ class AccuracyResult:
 # ---------------------------------------------------------------------------
 
 def _is_code_safe(code: str) -> bool:
-    """AST check: reject dangerous imports before execution."""
+    """AST check: reject dangerous imports and sandbox escape vectors."""
     try:
         tree = ast.parse(code)
     except SyntaxError:
@@ -75,6 +75,12 @@ def _is_code_safe(code: str) -> bool:
             root = (node.module or "").split(".")[0]
             if root in DANGEROUS_IMPORTS:
                 return False
+        elif isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") and node.attr.endswith("__"):
+                return False
+        elif isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec", "compile", "__import__"):
+                return False
     return True
 
 
@@ -85,7 +91,7 @@ def run_sandboxed(code: str, timeout: int = EXEC_TIMEOUT) -> tuple[bool, str, st
 
     wrapper = f"""import resource, sys
 resource.setrlimit(resource.RLIMIT_CPU, ({timeout}, {timeout}))
-resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
 resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
 resource.setrlimit(resource.RLIMIT_NPROC, (16, 16))
 exec({code!r})
@@ -190,7 +196,15 @@ def grade_fibonacci(response: str) -> tuple[bool, float, str]:
         ok, stdout, stderr = run_sandboxed(code)
         if ok:
             # Re-extract namespace by running with a probe
-            probe = code + "\n\n_probe_result = fib(10) if 'fib' in dir() else fibonacci(10) if 'fibonacci' in dir() else Fib(10) if 'Fib' in dir() else None"
+            probe = code + """
+
+_fib_func = None
+for _name in dir():
+    if 'fib' in _name.lower() and callable(eval(_name)):
+        _fib_func = eval(_name)
+        break
+_probe_result = _fib_func(10) if _fib_func else None
+"""
             ok2, stdout2, _ = run_sandboxed(probe)
             if ok2:
                 try:
